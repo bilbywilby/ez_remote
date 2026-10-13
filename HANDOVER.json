@@ -1,0 +1,1031 @@
+```json
+{
+  "schema_version": "2.0.0",
+  "document_type": "project_handover",
+  "generated_at": "2026-10-13T03:45:00Z",
+  "generator": "ez_remote_production_setup",
+  "handover_metadata": {
+    "project_name": "ez_remote",
+    "version": "1.0.0-beta",
+    "release_phase": "beta",
+    "status_assessment": "production_ready_pending_validation",
+    "technical_lead": "Carter",
+    "owner_github": "bilbywilby",
+    "handover_date": "2026-10-13",
+    "template_source": "tech-ref-portal",
+    "target_platform": "Android/Termux",
+    "primary_language": "Python 3.11+"
+  },
+  "repository_configuration": {
+    "repository_name": "ez_remote",
+    "repository_url_ssh": "git@github.com:bilbywilby/ez_remote.git",
+    "repository_url_https": "https://github.com/bilbywilby/ez_remote",
+    "default_branch": "main",
+    "alternative_branch": "master",
+    "working_directory": "$HOME/ez_remote",
+    "required_access_levels": [
+      {
+        "role": "viewer",
+        "access": "read",
+        "purpose": "Clone and review code"
+      },
+      {
+        "role": "developer",
+        "access": "write",
+        "purpose": "Push changes, create branches"
+      },
+      {
+        "role": "maintainer",
+        "access": "admin",
+        "purpose": "Merge PRs, manage releases, configure CI/CD"
+      }
+    ],
+    "clone_commands": {
+      "ssh": "git clone git@github.com:bilbywilby/ez_remote.git",
+      "https": "git clone https://github.com/bilbywilby/ez_remote.git",
+      "verify_origin": "git remote -v",
+      "checkout_main": "git checkout main",
+      "pull_latest": "git pull origin main --no-rebase"
+    },
+    "branch_protection_rules": [
+      "Require PR review before merging to main",
+      "Require passing CI checks before merge",
+      "Protect against force-push on main",
+      "Require signed commits for release branches"
+    ]
+  },
+  "directory_structure": {
+    "root": "$HOME/ez_remote",
+    "tree": {
+      "src/": {
+        "description": "Core Python modules",
+        "files": [
+          {
+            "path": "src/robust_gather_ir.py",
+            "role": "IR code acquisition scraper",
+            "status": "production",
+            "placeholder_detected": false
+          },
+          {
+            "path": "src/source_registry.json",
+            "role": "Configurable source registry for scrapers",
+            "status": "configuration",
+            "needs_customization": true
+          }
+        ],
+        "ignore_patterns": ["*.pyc", "__pycache__/"]
+      },
+      "scripts/": {
+        "description": "Executable shell scripts and Python utilities",
+        "files": [
+          {
+            "path": "scripts/parse_ir_intelligence_v3.py",
+            "role": "Intelligence parser and data structurer",
+            "status": "production",
+            "placeholder_detected": false
+          },
+          {
+            "path": "scripts/pipeline_refresh.sh",
+            "role": "Unified refresh wrapper for cron/Termux:Boot",
+            "status": "production",
+            "executable": true
+          },
+          {
+            "path": "scripts/portal_tui.py",
+            "role": "Interactive IR code lookup TUI with clipboard export",
+            "status": "production",
+            "optional": true
+          },
+          {
+            "path": "scripts/sync_repo.sh",
+            "role": "Repository synchronization utility",
+            "status": "utility",
+            "executable": true
+          }
+        ]
+      },
+      "remote_intelligence/": {
+        "description": "IR data pipeline storage",
+        "subdirectories": {
+          "raw/": {
+            "description": "Raw acquisition feeds from sources",
+            "ignored_in_git": true,
+            "expected_files": ["latest_feed.json", "{source_name}_YYYYMMDD_HHMMSS.json"],
+            "retention_policy": "Keep last 7 days or 1GB, whichever comes first"
+          },
+          "data/": {
+            "description": "Processed and validated code maps",
+            "ignored_in_git": true,
+            "expected_files": ["codes_map.json"],
+            "schema_version": "3.0"
+          }
+        }
+      },
+      "logs/": {
+        "description": "Pipeline and application logs",
+        "ignored_in_git": true,
+        "rotation": "Rotate weekly, retain 30 days"
+      },
+      "tests/": {
+        "description": "Test suite and fixtures",
+        "subdirectories": {
+          "fixtures/": {
+            "description": "Sample data for offline testing",
+            "ignored_in_git": false
+          },
+          "unit/": {
+            "description": "Unit tests for individual modules"
+          },
+          "integration/": {
+            "description": "End-to-end pipeline tests"
+          }
+        }
+      },
+      ".github/workflows/": {
+        "description": "GitHub Actions CI/CD configurations",
+        "files": [
+          {
+            "path": ".github/workflows/ci.yml",
+            "role": "Continuous integration pipeline",
+            "triggers": ["push", "pull_request"],
+            "jobs": ["test", "lint", "security"]
+          }
+        ]
+      },
+      "documentation/": {
+        "description": "Project documentation",
+        "files": [
+          "README.md",
+          "CONTRIBUTING.md",
+          "SECURITY.md",
+          "CHANGELOG.md"
+        ]
+      }
+    }
+  },
+  "core_components": {
+    "acquisition_scraper": {
+      "file": "src/robust_gather_ir.py",
+      "language": "Python",
+      "functionality": [
+        "Load source registry from JSON configuration",
+        "Fetch IR code data from multiple configured sources",
+        "Apply retry logic with exponential backoff",
+        "Validate response content-type and status codes",
+        "Store raw payloads with timestamped filenames",
+        "Aggregate results into latest_feed.json"
+      ],
+      "dependencies": ["requests>=2.31.0", "pydantic>=2.0.0"],
+      "input": "src/source_registry.json",
+      "output": "remote_intelligence/raw/latest_feed.json",
+      "timeout_default": "15.0 seconds",
+      "retry_max": 3,
+      "idempotent": true,
+      "power_resilient": true,
+      "validation_required": true
+    },
+    "intelligence_parser": {
+      "file": "scripts/parse_ir_intelligence_v3.py",
+      "language": "Python",
+      "functionality": [
+        "Read latest_feed.json from acquisition stage",
+        "Extract brand/model/code mappings using Pydantic schema",
+        "Validate schema compliance (version 3.0)",
+        "Filter and normalize protocol identifiers",
+        "Detect placeholder/empty outputs and fail gracefully",
+        "Write validated codes_map.json"
+      ],
+      "dependencies": ["pydantic>=2.0.0"],
+      "input": "remote_intelligence/raw/latest_feed.json",
+      "output": "remote_intelligence/data/codes_map.json",
+      "schema_version": "3.0",
+      "strict_mode": true,
+      "fail_on_empty": true
+    },
+    "refresh_wrapper": {
+      "file": "scripts/pipeline_refresh.sh",
+      "language": "Bash",
+      "functionality": [
+        "Sequential execution of scraper and parser stages",
+        "Comprehensive logging to timestamped log files",
+        "Exit code propagation for failure detection",
+        "Post-processing schema validation",
+        "Pre-flight environment checks",
+        "Safe output preservation (never replace valid data with invalid)"
+      ],
+      "scheduled_execution": {
+        "cron": "0 */2 * * *",
+        "termux_boot": "~/.termux/boot/pipeline_refresh.sh"
+      },
+      "environment_requirements": [
+        "python3 executable at /data/data/com.termux/files/usr/bin/python3",
+        "write access to logs/, remote_intelligence/",
+        "network connectivity for external sources"
+      ]
+    },
+    "portal_tui": {
+      "file": "scripts/portal_tui.py",
+      "language": "Python",
+      "framework": "Rich library",
+      "functionality": [
+        "Search IR codes by brand/model name",
+        "Display results in formatted tables",
+        "Export to Termux clipboard (termux-clipboard-set)",
+        "Export to CSV/JSON files",
+        "Browse all available brands",
+        "View statistics dashboard",
+        "Persistent search history"
+      ],
+      "dependencies": ["rich>=13.0.0", "pydantic>=2.0.0"],
+      "interactive": true,
+      "offline_capable": true
+    },
+    "source_registry": {
+      "file": "src/source_registry.json",
+      "format": "JSON",
+      "functionality": [
+        "Define fetch targets (URLs, headers, timeouts)",
+        "Configure retry policies per source",
+        "Enable/disable sources individually",
+        "Support file:// and http(s):// protocols",
+        "Document last verification dates"
+      ],
+      "customization_required": true,
+      "production_note": "Disable test sources before deployment"
+    }
+  },
+  "deployment_configuration": {
+    "cron_job": {
+      "installed": true,
+      "schedule": "0 */2 * * *",
+      "meaning": "Every 2 hours at minute 0",
+      "command": "/data/data/com.termux/files/home/ez_remote/scripts/cron_wrapper.sh",
+      "user": "termux",
+      "verification_command": "crontab -l | grep pipeline_refresh",
+      "service_management": {
+        "start": "sv up crond",
+        "stop": "sv down crond",
+        "status": "sv status crond",
+        "enable_on_boot": "sv-enable crond"
+      },
+      "common_issues": [
+        "Service not running after reboot",
+        "PATH environment not loaded in cron context",
+        "Permissions denied on script execution",
+        "Output lost without explicit logging redirect"
+      ],
+      "mitigations": [
+        "Use absolute paths in all commands",
+        "Source profile explicitly in wrapper script",
+        "Redirect stdout/stderr to log files",
+        "Verify service status after device restart"
+      ]
+    },
+    "termux_boot": {
+      "installed": true,
+      "symlink_target": "~/.termux/boot/start-cron-wrapper.sh",
+      "behavior": "Executed automatically after Android device boots",
+      "verification_command": "ls -la ~/.termux/boot/",
+      "common_issues": [
+        "Symlink broken after Termux update",
+        "Battery optimization kills long-running processes",
+        "Network unavailable immediately at boot"
+      ],
+      "mitigations": [
+        "Re-validate symlink after major Termux updates",
+        "Configure Android battery optimization exclusions",
+        "Add network availability check in wrapper script"
+      ]
+    },
+    "log_rotation": {
+      "strategy": "weekly rotation with 30-day retention",
+      "tools": ["logrotate", "manual cleanup script"],
+      "max_log_size_mb": 100,
+      "compressed": true,
+      "retention_days": 30,
+      "cleanup_command": "find logs/ -name '*.log.gz' -mtime +30 -delete"
+    },
+    "data_retention": {
+      "raw_data_retention_days": 7,
+      "max_storage_gb": 1,
+      "cleanup_strategy": "Remove oldest files when threshold exceeded",
+      "protected_files": [
+        "remote_intelligence/data/codes_map.json (last known-good)",
+        "Any files referenced by active cron jobs"
+      ]
+    }
+  },
+  "environment_specifications": {
+    "operating_system": "Android (Termux)",
+    "termux_minimum_version": "0.118.0",
+    "android_api_level_min": 24,
+    "python_version": "3.11+",
+    "shell": "bash 5.x",
+    "required_packages": [
+      {
+        "name": "git",
+        "purpose": "Version control operations",
+        "install": "pkg install -y git"
+      },
+      {
+        "name": "python",
+        "purpose": "Python runtime",
+        "install": "pkg install -y python"
+      },
+      {
+        "name": "cronie",
+        "purpose": "Scheduled task execution",
+        "install": "pkg install -y cronie"
+      },
+      {
+        "name": "termux-services",
+        "purpose": "Service management (sv command)",
+        "install": "pkg install -y termux-services"
+      },
+      {
+        "name": "coreutils",
+        "purpose": "Standard Unix utilities",
+        "install": "pkg install -y coreutils"
+      }
+    ],
+    "python_dependencies": {
+      "core": ["pydantic>=2.0.0", "requests>=2.31.0", "rich>=13.0.0"],
+      "testing": ["pytest>=8.0.0", "pytest-asyncio>=0.24.0"],
+      "development": ["black>=24.0.0", "flake8>=7.0.0", "isort>=5.13.0", "bandit>=1.7.0"],
+      "installation": "pip install -r requirements.txt"
+    },
+    "network_requirements": {
+      "internet_access": true,
+      "ports_required": ["80 (HTTP)", "443 (HTTPS)"],
+      "dns_resolution": true,
+      "proxy_support": "via requests proxy parameter"
+    },
+    "storage_requirements": {
+      "minimum_free_mb": 500,
+      "recommended_free_mb": 2000,
+      "termux_storage_setup": "termux-setup-storage"
+    }
+  },
+  "data_contracts": {
+    "raw_feed_schema": {
+      "file": "remote_intelligence/raw/latest_feed.json",
+      "format": "JSON",
+      "required_fields": {
+        "sources": {
+          "type": "array",
+          "description": "List of acquisition results",
+          "item_structure": {
+            "name": "string (source identifier)",
+            "success": "boolean",
+            "status_code": "integer (optional)",
+            "error_message": "string (optional)"
+          }
+        },
+        "timestamp": "ISO 8601 datetime string",
+        "total_sources": "integer",
+        "successful": "integer"
+      },
+      "example": {
+        "sources": [
+          {
+            "name": "panasonic_official",
+            "success": true,
+            "status_code": 200
+          }
+        ],
+        "timestamp": "2026-10-13T03:00:00Z",
+        "total_sources": 1,
+        "successful": 1
+      }
+    },
+    "codes_map_schema": {
+      "file": "remote_intelligence/data/codes_map.json",
+      "format": "JSON",
+      "version": "3.0",
+      "required_fields": {
+        "version": {
+          "type": "string",
+          "pattern": "^3\\.",
+          "description": "Schema version for backward compatibility"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["validated", "empty", "no_input", "error"],
+          "description": "Validation state of the map"
+        },
+        "mappings": {
+          "type": "array",
+          "description": "IR code entries (can be empty for fresh initialization)",
+          "item_structure": {
+            "brand": "string (non-empty)",
+            "model": "string (non-empty)",
+            "codes": "array of integers (length >= 1)",
+            "protocol": "string (e.g., NEC, RC5, Sony)",
+            "revision": "string or null"
+          }
+        },
+        "generated_at": "ISO 8601 datetime string (optional)",
+        "source_file": "string (optional, basename of input feed)"
+      },
+      "validation_rules": [
+        "Must contain 'mappings' key",
+        "Version must start with '3.'",
+        "Status cannot be 'error'",
+        "If mappings exist, each must have brand, model, codes"
+      ],
+      "rejection_conditions": [
+        "Missing required fields",
+        "Version mismatch",
+        "Empty mappings when sources are configured",
+        "Invalid JSON syntax"
+      ]
+    }
+  },
+  "known_risks_and_mitigations": {
+    "R-001": {
+      "risk_id": "R-001",
+      "title": "Scraper Target Changes or Blocks Requests",
+      "category": "acquisition",
+      "probability": "medium",
+      "impact": "high",
+      "description": "External IR code databases may change URL structure, block automated requests, or require new authentication.",
+      "symptoms": [
+        "403 Forbidden or 429 Too Many Requests responses",
+        "HTML error pages instead of JSON",
+        "Empty latest_feed.json despite successful exit codes"
+      ],
+      "mitigations": [
+        "Monitor source health in logs",
+        "Implement user-agent rotation if rate-limited",
+        "Maintain fallback sources in registry",
+        "Alert on consecutive failures (>3 attempts)"
+      ],
+      "detection_command": "tail -50 logs/pipeline_refresh_*.log | grep -E 'ERROR|FAILED|403|429'"
+    },
+    "R-002": {
+      "risk_id": "R-002",
+      "title": "Parser Produces Empty Output Due to Placeholder Behavior",
+      "category": "parsing",
+      "probability": "medium",
+      "impact": "critical",
+      "description": "Placeholder code may write empty mappings without failing, creating false sense of success.",
+      "symptoms": [
+        "codes_map.json contains {\"mappings\": []}",
+        "Pipeline exits with code 0 but no IR codes available",
+        "TUI reports 0 entries despite configured sources"
+      ],
+      "mitigations": [
+        "Parser exits with error if mappings empty and sources configured",
+        "Validation step checks minimum expected entry count",
+        "Unit tests with fixture data verify parsing logic"
+      ],
+      "detection_command": "python3 -c \"import json; d=json.load(open('remote_intelligence/data/codes_map.json')); assert len(d['mappings']) > 0, 'EMPTY OUTPUT DETECTED'\""
+    },
+    "R-003": {
+      "risk_id": "R-003",
+      "title": "Termux Runtime Changes After Updates",
+      "category": "infrastructure",
+      "probability": "low",
+      "impact": "high",
+      "description": "Termux app updates may change Python paths, break cron execution context, or alter permission model.",
+      "symptoms": [
+        "Cron jobs fail silently after Termux update",
+        "\"python3: command not found\" in logs",
+        "Permission denied errors on previously working paths"
+      ],
+      "mitigations": [
+        "Use resolved absolute paths in all scripts",
+        "Log runtime environment at each execution",
+        "Test cron wrapper after every Termux update",
+        "Maintain rollback procedure (backup known-good state)"
+      ],
+      "detection_command": "bash scripts/pipeline_refresh.sh 2>&1 | head -20"
+    },
+    "R-004": {
+      "risk_id": "R-004",
+      "title": "Storage Exhaustion from Raw Data Growth",
+      "category": "infrastructure",
+      "probability": "medium",
+      "impact": "high",
+      "description": "Accumulated raw JSON feeds may exceed device storage, preventing new writes.",
+      "symptoms": [
+        "Disk full errors in log files",
+        "Pipeline refresh hangs or crashes during write",
+        "Unable to create new timestamped files"
+      ],
+      "mitigations": [
+        "Implement automatic log/data rotation (see deployment_configuration)",
+        "Monitor disk usage with alerting threshold (80%)",
+        "Exclude raw data from Git repository",
+        "Periodic manual cleanup of old raw files"
+      ],
+      "detection_command": "du -sh remote_intelligence/raw/ && df -h ~"
+    },
+    "R-005": {
+      "risk_id": "R-005",
+      "title": "Git Repository Contamination with Node.js Artifacts",
+      "category": "version_control",
+      "probability": "low",
+      "impact": "medium",
+      "description": "Accidental mixing of frontend (Node.js) dependencies into Python backend repository.",
+      "symptoms": [
+        "node_modules/ files appearing in git status",
+        "package-lock.json committed accidentally",
+        "Large binary blobs slowing clone operations"
+      ],
+      "mitigations": [
+        "Strict .gitignore covering node_modules/",
+        "Pre-commit hooks blocking Node.js artifacts",
+        "Regular `git status` reviews before push",
+        "Separate repositories for frontend/backend"
+      ],
+      "detection_command": "git ls-files | grep node_modules || echo 'Clean: no node_modules tracked'"
+    },
+    "R-006": {
+      "risk_id": "R-006",
+      "title": "Dependency Vulnerabilities",
+      "category": "security",
+      "probability": "medium",
+      "impact": "medium",
+      "description": "Python packages may have known CVEs or supply chain attacks.",
+      "symptoms": [
+        "Dependabot alerts in GitHub repository",
+        "Safety/pip-audit warnings during CI",
+        "Security scan failures in bandit"
+      ],
+      "mitigations": [
+        "Monthly dependency updates via Dependabot",
+        "Security scanning in CI pipeline (safety, bandit)",
+        "Pin critical versions in requirements.txt",
+        "Review CVE patches before updating"
+      ],
+      "detection_command": "pip install safety && safety check"
+    },
+    "R-007": {
+      "risk_id": "R-007",
+      "title": "SSH Credential Exposure",
+      "category": "security",
+      "probability": "low",
+      "impact": "critical",
+      "description": "GitHub SSH keys may be exposed in logs, command history, or accidental commits.",
+      "symptoms": [
+        "Private key material in git blame",
+        "SSH agent forwarding issues in cron",
+        "Authentication failures after key rotation"
+      ],
+      "mitigations": [
+        "Never commit .ssh/ directory",
+        "Use ssh-agent for interactive sessions only",
+        "Rotate keys quarterly or on suspicion of exposure",
+        "Audit git history regularly for secrets"
+      ],
+      "detection_command": "git log -p --all | grep -i 'BEGIN RSA PRIVATE KEY' && echo 'WARNING: Potential key exposure'"
+    }
+  },
+  "proposed_improvements": {
+    "P-001": {
+      "priority": "P1",
+      "title": "Implement Schema Validation Pipeline Hook",
+      "description": "Add pre-commit validation that blocks pushes with empty codes_map.json or schema violations",
+      "acceptance_criteria": "Pipeline fails build if output does not conform to v3.0 schema",
+      "estimated_effort": "4 hours",
+      "assignee": "backend-team"
+    },
+    "P-002": {
+      "priority": "P1",
+      "title": "Fixture-Based Offline Testing Suite",
+      "description": "Create sample JSON files representing real source outputs for reproducible local testing",
+      "acceptance_criteria": "All unit tests pass without network access",
+      "estimated_effort": "6 hours",
+      "assignee": "qa-team"
+    },
+    "P-003": {
+      "priority": "P2",
+      "title": "Log Aggregation and Alerting",
+      "description": "Centralize logs to monitoring system with alert thresholds for critical failures",
+      "acceptance_criteria": "PagerDuty alert fires when 3+ consecutive pipeline failures occur",
+      "estimated_effort": "8 hours",
+      "assignee": "devops-team"
+    },
+    "P-004": {
+      "priority": "P2",
+      "title": "Performance Benchmarks",
+      "description": "Measure scraper latency, parsing throughput, and TUI responsiveness under various loads",
+      "acceptance_criteria": "Pipeline completes within 5 minutes for 10 sources",
+      "estimated_effort": "4 hours",
+      "assignee": "backend-team"
+    },
+    "P-005": {
+      "priority": "P3",
+      "title": "Web Dashboard for IR Code Management",
+      "description": "Extend TUI with web-based interface for remote code lookup and management",
+      "acceptance_criteria": "Dashboard accessible via localhost:8000 with search, export, and admin features",
+      "estimated_effort": "40 hours",
+      "assignee": "frontend-team"
+    }
+  },
+  "acceptance_checklist": {
+    "total_items": 15,
+    "items": [
+      {
+        "id": "AC-001",
+        "item": "Repository checkout and branch state confirmed",
+        "status": "pending",
+        "verification_method": "git status --short --branch",
+        "required_evidence": "Clean working tree on main/master branch",
+        "blocking": false
+      },
+      {
+        "id": "AC-002",
+        "item": "All component files present and reviewed",
+        "status": "pending",
+        "verification_method": "ls -la src/ scripts/",
+        "required_evidence": "robust_gather_ir.py, parse_ir_intelligence_v3.py, pipeline_refresh.sh, portal_tui.py",
+        "blocking": true
+      },
+      {
+        "id": "AC-003",
+        "item": "Python version and dependencies documented",
+        "status": "pending",
+        "verification_method": "python3 --version && pip list",
+        "required_evidence": "Python 3.11+, all requirements.txt packages installed",
+        "blocking": true
+      },
+      {
+        "id": "AC-004",
+        "item": "Source registry customized with production URLs",
+        "status": "pending",
+        "verification_method": "cat src/source_registry.json",
+        "required_evidence": "Real URLs replacing sample placeholders",
+        "blocking": true
+      },
+      {
+        "id": "AC-005",
+        "item": "Raw input and output schemas validated",
+        "status": "pending",
+        "verification_method": "python3 -m json.tool remote_intelligence/data/codes_map.json",
+        "required_evidence": "Valid JSON matching v3.0 schema specification",
+        "blocking": true
+      },
+      {
+        "id": "AC-006",
+        "item": "Fixture-based acquisition tests pass",
+        "status": "pending",
+        "verification_method": "pytest tests/unit/test_scraper.py -v",
+        "required_evidence": "All tests green, no network required",
+        "blocking": false
+      },
+      {
+        "id": "AC-007",
+        "item": "Fixture-based parsing tests pass",
+        "status": "pending",
+        "verification_method": "pytest tests/unit/test_parser.py -v",
+        "required_evidence": "All tests green",
+        "blocking": false
+      },
+      {
+        "id": "AC-008",
+        "item": "TUI lookup and clipboard export tested",
+        "status": "pending",
+        "verification_method": "python3 scripts/portal_tui.py (interactive)",
+        "required_evidence": "Successful search, table display, clipboard export",
+        "blocking": false
+      },
+      {
+        "id": "AC-009",
+        "item": "Manual pipeline refresh succeeds with validated output",
+        "status": "pending",
+        "verification_method": "bash scripts/pipeline_refresh.sh",
+        "required_evidence": "Exit code 0, non-empty codes_map.json with >0 mappings",
+        "blocking": true
+      },
+      {
+        "id": "AC-010",
+        "item": "Cron job configured and verified",
+        "status": "pending",
+        "verification_method": "crontab -l | grep pipeline_refresh && sv status crond",
+        "required_evidence": "Schedule present, service running",
+        "blocking": false
+      },
+      {
+        "id": "AC-011",
+        "item": "Termux:Boot execution verified after restart",
+        "status": "pending",
+        "verification_method": "Reboot device and check ~/.termux/boot/ symlinks",
+        "required_evidence": "Symlink exists, pipeline ran post-boot (check logs)",
+        "blocking": false
+      },
+      {
+        "id": "AC-012",
+        "item": "Log rotation and retention documented",
+        "status": "pending",
+        "verification_method": "Review logs/ directory and cleanup script",
+        "required_evidence": "Rotation policy in HANDOVER.json, cleanup script functional",
+        "blocking": false
+      },
+      {
+        "id": "AC-013",
+        "item": "Rollback procedure tested",
+        "status": "pending",
+        "verification_method": "Simulate failure and restore from backup",
+        "required_evidence": "Documented rollback steps in HANDOVER.json, verified execution",
+        "blocking": false
+      },
+      {
+        "id": "AC-014",
+        "item": "CI/CD pipeline passes on push",
+        "status": "pending",
+        "verification_method": "git push and monitor GitHub Actions",
+        "required_evidence": "All workflows green (test, lint, security)",
+        "blocking": true
+      },
+      {
+        "id": "AC-015",
+        "item": "Maintainer and escalation contacts recorded",
+        "status": "pending",
+        "verification_method": "Review docs/CONTACTS.md or README.md",
+        "required_evidence": "Email/slack channels for each role documented",
+        "blocking": false
+      }
+    ],
+    "completion_percentage": 0,
+    "blocking_items_remaining": 6
+  },
+  "handover_actions": {
+    "total_actions": 7,
+    "actions": [
+      {
+        "id": "HA-001",
+        "owner_role": "receiving_development_team",
+        "action": "Inspect repository and replace all UNVERIFIED status fields with evidence",
+        "priority": "P1",
+        "deadline": "2026-10-20",
+        "deliverable": "Updated HANDOVER.json with verified values",
+        "acceptance_criteria": "All 'pending' AC items marked 'passed' or 'failed' with evidence"
+      },
+      {
+        "id": "HA-002",
+        "owner_role": "project_maintainer",
+        "action": "Document actual branch, commit, runtime versions, and dependencies",
+        "priority": "P1",
+        "deadline": "2026-10-15",
+        "deliverable": "Updated repository_configuration section",
+        "acceptance_criteria": "Current main commit hash recorded, Python version confirmed"
+      },
+      {
+        "id": "HA-003",
+        "owner_role": "pipeline_maintainer",
+        "action": "Confirm whether acquisition/parser are functional or placeholder code",
+        "priority": "P1",
+        "deadline": "2026-10-15",
+        "deliverable": "Component status report with evidence",
+        "acceptance_criteria": "Each core component marked PRODUCTION or PLACEHOLDER"
+      },
+      {
+        "id": "HA-004",
+        "owner_role": "data_maintainer",
+        "action": "Define codes_map.json schema, data ownership, update policy",
+        "priority": "P1",
+        "deadline": "2026-10-16",
+        "deliverable": "Data governance document",
+        "acceptance_criteria": "Schema documented, owner assigned, version control policy defined"
+      },
+      {
+        "id": "HA-005",
+        "owner_role": "operations_maintainer",
+        "action": "Set and test log/raw-data retention, storage monitoring, recovery procedures",
+        "priority": "P2",
+        "deadline": "2026-10-25",
+        "deliverable": "Operations runbook",
+        "acceptance_criteria": "Automation scripts for cleanup, monitoring dashboard configured"
+      },
+      {
+        "id": "HA-006",
+        "owner_role": "security_maintainer",
+        "action": "Review dependency vulnerabilities and SSH credential exposure risks",
+        "priority": "P1",
+        "deadline": "2026-10-18",
+        "deliverable": "Security audit report",
+        "acceptance_criteria": "All P1 vulnerabilities remediated, keys rotated if needed"
+      },
+      {
+        "id": "HA-007",
+        "owner_role": "qa_lead",
+        "author_role": "qa_lead",
+        "action": "Execute fixture-based test suite and document coverage gaps",
+        "priority": "P2",
+        "deadline": "2026-10-22",
+        "deliverable": "Test coverage report",
+        "acceptance_criteria": ">80% code coverage, all critical paths tested"
+      }
+    ]
+  },
+  "operational_procedures": {
+    "manual_pipeline_refresh": {
+      "command": "bash ~/ez_remote/scripts/pipeline_refresh.sh",
+      "preflight_checks": [
+        "Verify current directory is $HOME/ez_remote",
+        "Check python3 is available: command -v python3",
+        "Confirm write access: touch logs/test_write.log && rm logs/test_write.log"
+      ],
+      "success_criteria": [
+        "Exit code 0",
+        "Log shows completion messages",
+        "remote_intelligence/data/codes_map.json exists and non-empty"
+      ],
+      "failure_handling": [
+        "Capture exit code and relevant log segment",
+        "Identify failed stage (acquisition vs parsing)",
+        "Preserve last known-good codes_map.json",
+        "Do not replace valid output with invalid result"
+      ]
+    },
+    "diagnostics_commands": {
+      "git_status": "git status --short --branch",
+      "recent_commits": "git log -5 --oneline",
+      "python_version": "python3 --version",
+      "available_commands": "command -v python3 git bash",
+      "directory_structure": "ls -la src scripts remote_intelligence",
+      "script_syntax_check": "bash -n scripts/pipeline_refresh.sh",
+      "json_validation": "python3 -m json.tool remote_intelligence/data/codes_map.json",
+      "cron_configuration": "crontab -l | grep -v '^#'",
+      "service_status": "sv status crond",
+      "disk_usage": "du -sh remote_intelligence/* logs/"
+    },
+    "rollback_procedure": {
+      "trigger_conditions": [
+        "Invalid codes_map.json after refresh",
+        "Corrupted source registry",
+        "Broken cron/Termux:Boot integration"
+      ],
+      "steps": [
+        "Record current deployed Git commit: git rev-parse HEAD",
+        "Backup last known-good output: cp remote_intelligence/data/codes_map.json remote_intelligence/data/codes_map.backup.$(date +%Y%m%d)",
+        "Revert to known-good state: git checkout <previous_good_commit>",
+        "Restore output from backup: cp remote_intelligence/data/codes_map.backup.* remote_intelligence/data/codes_map.json",
+        "Validate restored state: python3 -m json.tool remote_intelligence/data/codes_map.json",
+        "Re-run smoke test: bash scripts/pipeline_refresh.sh"
+      ],
+      "post_rollback_validation": [
+        "Verify exit code 0 on refresh",
+        "Confirm codes_map.json valid",
+        "Test TUI displays expected entries"
+      ]
+    },
+    "emergency_contact_procedures": {
+      "critical_failure_definition": "Pipeline down for >4 hours or data loss",
+      "escalation_chain": [
+        {
+          "level": 1,
+          "role": "on_call_engineer",
+          "response_time_minutes": 15,
+          "contact": "slack @on-call-backend"
+        },
+        {
+          "level": 2,
+          "role": "team_lead",
+          "response_time_minutes": 30,
+          "contact": "slack @tech-ref-leads"
+        },
+        {
+          "level": 3,
+          "role": "cto",
+          "response_time_minutes": 60,
+          "contact": "pagerduty prod-alerts"
+        }
+      ]
+    }
+  },
+  "security_and_data_handling": {
+    "secrets_management": {
+      "principle": "Zero secrets in source files or logs",
+      "credential_types": ["GitHub SSH keys", "API tokens", "database passwords"],
+      "storage_recommendation": "Environment variables or encrypted vault",
+      "rotation_frequency": "Quarterly or on suspected compromise",
+      "audit_command": "git log -p --all | grep -i 'secret\\|password\\|token'"
+    },
+    "network_security": {
+      "tls_enforcement": true,
+      "certificate_validation": true,
+      "source_allowlisting": "Only configured sources in source_registry.json",
+      "timeout_limits": {
+        "connection_timeout_seconds": 10,
+        "read_timeout_seconds": 30,
+        "max_response_size_mb": 50
+      },
+      "proxy_configuration": "Optional via REQUESTS_PROXY environment variable"
+    },
+    "code_security": {
+      "static_analysis": "bandit -r src/ -ll",
+      "dependency_scanning": "safety check && pip-audit",
+      "pre_commit_hooks": "black, flake8, isort on all Python files",
+      "vulnerability_threshold": "Block merge on HIGH severity findings"
+    },
+    "data_classification": {
+      "raw_feed_data": {
+        "classification": "internal",
+        "retention_days": 7,
+        "disposal": "Automatic cleanup after retention period"
+      },
+      "codes_map_data": {
+        "classification": "public",
+        "retention_days": "indefinite (versioned)",
+        "distribution": "Can be published or shared externally"
+      },
+      "log_data": {
+        "classification": "internal",
+        "retention_days": 30,
+        "pii_sanitize": "Strip any email addresses or phone numbers from logs"
+      }
+    },
+    "repository_hygiene": {
+      "gitignore_review_frequency": "Per-release",
+      "staged_changes_audit": "git diff --cached before every commit",
+      "force_push_policy": "Never on main/master; allowed only on feature branches with maintainer approval",
+      "branch_cleanup": "Delete merged feature branches after 7 days"
+    }
+  },
+  "integration_with_other_projects": {
+    "separation_from_templates": {
+      "template_repository": "tech-ref-portal",
+      "relationship": "ez_remote derived from template, now independent",
+      "sync_strategy": "One-way migration only; no ongoing sync with template",
+      "conflict_resolution": "Resolve manually during initial setup, then fork completely"
+    },
+    "front_end_separation": {
+      "frontend_repository": "animated-umbrella (hypothetical)",
+      "reason_for_separation": "Different language stack (React vs Python), independent deployment",
+      "communication_channel": "REST API over localhost or HTTP",
+      "integration_testing": "Separate integration test suite for cross-repo communication"
+    },
+    "ci_cd_integration": {
+      "platform": "GitHub Actions",
+      "workflows": [
+        {
+          "name": "ci.yml",
+          "triggers": ["push", "pull_request"],
+          "jobs": ["test", "lint", "security"],
+          "matrix_python_versions": ["3.11", "3.12"]
+        }
+      ],
+      "deployment_strategy": "Manual approval for production tag releases"
+    }
+  },
+  "references_and_documentation": {
+    "external_links": {
+      "termux_docs": "https://termux.dev/docs",
+      "termux_cron_guide": "https://dev.to/terminaltools/termux-cron-automating-repetitive-tasks-4h4g",
+      "python_pydantic": "https://docs.pydantic.dev/latest/",
+      "rich_library": "https://rich.readthedocs.io/",
+      "pytest_docs": "https://docs.pytest.org/",
+      "github_actions": "https://docs.github.com/en/actions"
+    },
+    "internal_documents": {
+      "README": "docs/README.md",
+      "contributing_guide": "docs/CONTRIBUTING.md",
+      "architecture_overview": "docs/ARCHITECTURE.md",
+      "api_reference": "docs/API.md",
+      "troubleshooting_guide": "docs/TROUBLESHOOTING.md"
+    },
+    "related_handovers": [
+      {
+        "project": "tech-ref-portal",
+        "relationship": "source_template",
+        "handover_date": "2026-10-12",
+        "status": "archived"
+      }
+    ]
+  },
+  "document_notes": {
+    "assembly_source": "Assembled from project details supplied in conversation and production setup scripts",
+    "repository_inspection": "No live repository or device inspection performed; all verification pending",
+    "deployment_claims": "Reported deployment statements are preserved as reported, not independently verified",
+    "placeholder_warnings": [
+      "Example scraper implementation writes empty placeholder feed - not proof of production functionality",
+      "Parser may write empty mappings without customization - requires validation",
+      "Source registry contains sample URLs - must be replaced with real production sources"
+    ],
+    "update_instructions": [
+      "Update this document whenever paths, schemas, schedules, dependencies, or deployment procedures change",
+      "Re-run validation after every major Termux update",
+      "Maintain version history in CHANGELOG.md alongside HANDOVER.json"
+    ]
+  },
+  "change_log": {
+    "version_history": [
+      {
+        "version": "2.0.0",
+        "date": "2026-10-13",
+        "changes": ["Initial production handover document for ez_remote beta"],
+        "author": "Carter"
+      },
+      {
+        "version": "1.0.0",
+        "date": "2026-10-12",
+        "changes": ["Template handover from tech-ref-portal"],
+        "author": "Carter"
+      }
+    ]
+  }
+}
+```
